@@ -1,10 +1,35 @@
-# 要件定義書：コンテナ版 AWS Lambda のローカルテスト環境（Docker Compose + moto + Bruno CLI）
+---
+id: REQ-001
+title: コンテナ版 AWS Lambda のローカルテスト環境（Docker Compose + moto + Bruno CLI）
+type: requirements
+version: "1.0"
+status: approved # draft | review | approved | deprecated
+created: 2026-10-10
+updated: 2026-10-10
+tags:
+  - aws-lambda
+  - container-image
+  - python3.14
+  - moto
+  - dynamodb
+  - s3
+  - docker-compose
+  - bruno
+  - step-functions
+related: []
+open_items:
+  - CI（GitHub Actions）での自動実行は後日検討
+  - Bruno から moto の状態を検証する方法の確認（作業 #7）
+changelog:
+  - version: "1.0"
+    date: 2026-10-10
+    summary: 質問 Q1〜Q7 への回答を反映して確定
+  - version: "0.1"
+    date: 2026-10-10
+    summary: 初版ドラフト作成
+---
 
-| 項目 | 内容 |
-| --- | --- |
-| 版数 | 1.0 |
-| 作成日 | 2026-10-10 |
-| ステータス | 確定（「9. 決定事項」参照。CI は後日検討） |
+# 要件定義書：コンテナ版 AWS Lambda のローカルテスト環境（Docker Compose + moto + Bruno CLI）
 
 ---
 
