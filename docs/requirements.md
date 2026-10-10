@@ -2,7 +2,7 @@
 id: REQ-001
 title: コンテナ版 AWS Lambda のローカルテスト環境（Docker Compose + moto + Bruno CLI）
 type: requirements
-version: "1.3"
+version: "1.4"
 status: approved # draft | review | approved | deprecated
 created: 2026-10-10
 updated: 2026-10-10
@@ -19,8 +19,10 @@ tags:
 related: []
 open_items:
   - CI（GitHub Actions）での自動実行は後日検討
-  - Lambda ベースイメージでの RIE 起動確認（作業 #3。開発用クラウド環境では ECR からイメージを取得できないため、ローカル環境で実施）
 changelog:
+  - version: "1.4"
+    date: 2026-10-10
+    summary: RIE 起動確認（作業 #3）と Lambda → moto 疎通確認（作業 #6）の結果を反映。moto のホスト側ポートを 5050 に変更
   - version: "1.3"
     date: 2026-10-10
     summary: Bruno コレクション・シェルスクリプトの実装に合わせて更新。RIE のエラー時レスポンスを確認
@@ -107,7 +109,7 @@ AWS Lambda をコンテナイメージ形式で開発し、AWS 環境にデプ�
     │                                   │ AWS_ENDPOINT_URL=http://moto:5000
     ▼                                   ▼
 ┌──────────────────────────────────────────────────────┐
-│ moto コンテナ (motoserver/moto)  :5000 → host :5000    │
+│ moto コンテナ (motoserver/moto)  :5000 → host :5050    │
 │   DynamoDB / S3                                       │
 └──────────────────────────────────────────────────────┘
     ▲
@@ -357,16 +359,18 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
 - **ダミー認証情報**：`AWS_ACCESS_KEY_ID=test` / `AWS_SECRET_ACCESS_KEY=test` / `AWS_DEFAULT_REGION=ap-northeast-1`
 - **RIE の例外時レスポンス**：ハンドラが例外を送出しても HTTP `200`、`Content-Type: text/plain` で、
   ボディに `errorType` / `errorMessage` / `stackTrace` を含む JSON が返る。`X-Amz-Function-Error` ヘッダは付かない
-  （aws-lambda-rie で確認済み）。このためアサーションはステータスコードではなくボディの `errorType` で行う
+  （作業 #3 で確認済み）。このためアサーションはステータスコードではなくボディの `errorType` で行う
 - **RIE の起動確認**：空の Payload `{}` は `ValidationError` になるだけで副作用がないため、`up.sh` の起動待ちに使う
 - **moto の状態検証**：Bruno から moto に直接リクエストして検証する方針
   - moto は Authorization ヘッダの資格情報スコープ（`.../<region>/<service>/aws4_request`）で振り分け先のサービスを判定する。
     署名は検証されないため、**ダミーの Authorization ヘッダ** を付ければ素の HTTP で問い合わせできる（moto 5.2.3 で確認済み）。
     ヘッダがない場合、S3 は `403` になる
-  - S3：`GET http://localhost:5000/orders-bucket/orders/ORD-0001.json`（パス形式）＋
+  - S3：`GET http://localhost:5050/orders-bucket/orders/ORD-0001.json`（パス形式）＋
     `Authorization: AWS4-HMAC-SHA256 Credential=test/20261010/ap-northeast-1/s3/aws4_request, SignedHeaders=host, Signature=dummy`
-  - DynamoDB：`POST http://localhost:5000/`、`X-Amz-Target: DynamoDB_20120810.GetItem`、
+  - DynamoDB：`POST http://localhost:5050/`、`X-Amz-Target: DynamoDB_20120810.GetItem`、
     `Content-Type: application/x-amz-json-1.0`、資格情報スコープを `dynamodb` にした Authorization ヘッダ
-- **moto のリセット**：`POST http://localhost:5000/moto-api/reset`
-- **moto のダッシュボード**：`http://localhost:5000/moto-api/` でモック中のリソースを確認できる
+- **moto のホスト側ポート**：macOS では AirPlay レシーバー（ControlCenter）が 5000 番を使っているため、ホスト側は **5050** に公開する（`MOTO_PORT` で変更可）。コンテナ間は従来どおり `moto:5000`
+- **moto のリセット**：`POST http://localhost:5050/moto-api/reset`。テーブル・バケットごと消えるため、
+  リセット後は `docker compose run --rm moto-init` で作り直す（作業 #6 で確認済み）
+- **moto のダッシュボード**：`http://localhost:5050/moto-api/` でモック中のリソースを確認できる
 - **Bruno CLI**：`npx @usebruno/cli@<version> run --env local --reporter-junit reports/junit.xml --reporter-html reports/report.html`

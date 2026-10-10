@@ -4,7 +4,7 @@ AWS Lambda（コンテナイメージ）を Docker Compose + moto + Bruno CLI �
 AWS アカウントは不要。要件は [docs/requirements.md](docs/requirements.md) を参照。
 
 ```
-Bruno CLI ──POST Payload──▶ Lambda (RIE :9000) ──boto3──▶ moto (:5000) [DynamoDB / S3]
+Bruno CLI ──POST Payload──▶ Lambda (RIE :9000) ──boto3──▶ moto (:5050) [DynamoDB / S3]
     └──────── 状態検証（DynamoDB GetItem / S3 GetObject）────────▶ moto
 ```
 
@@ -69,7 +69,7 @@ curl -s localhost:9000/2015-03-31/functions/function/invocations \
 
 - エラー時も HTTP 200 で、ボディに `errorType` / `errorMessage` が入る（RIE の仕様）。
   Step Functions の Retry / Catch も `errorType` で判定するため、テストでは `errorType` を検証する
-- moto に作成されたリソースは http://localhost:5000/moto-api/ で確認できる
+- moto に作成されたリソースは http://localhost:5050/moto-api/ で確認できる
 - Bruno GUI で `bruno/` フォルダを開き、環境 `local` を選べば手動実行もできる
 
 ## ディレクトリ構成

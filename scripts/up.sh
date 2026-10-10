@@ -6,13 +6,12 @@ source "$(dirname "$0")/lib.sh"
 
 require_docker
 
-log "コンテナをビルド・起動します"
-docker compose up -d --build
-
-log "初期データ投入（moto-init）の完了を待機中"
-# docker compose wait はコンテナの終了コードをそのまま返す（timeout 時は 124）
-if ! timeout "$WAIT_TIMEOUT_SEC" docker compose wait moto-init >/dev/null; then
-  err "moto-init が失敗またはタイムアウトしました"
+log "コンテナをビルド・起動します（初期データ投入の完了まで待機、最大 ${WAIT_TIMEOUT_SEC} 秒）"
+# register-order は moto-init の正常終了を待って起動するため、--wait で初期データ投入の完了まで待てる。
+# macOS には GNU の timeout がないので、タイムアウトは compose の --wait-timeout に任せる
+if ! docker compose up -d --build --wait --wait-timeout "$WAIT_TIMEOUT_SEC"; then
+  err "起動に失敗またはタイムアウトしました"
+  docker compose ps -a >&2 || true
   docker compose logs moto-init >&2 || true
   exit 1
 fi

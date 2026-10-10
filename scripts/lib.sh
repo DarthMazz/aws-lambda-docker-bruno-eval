@@ -14,7 +14,7 @@ if [[ -f .env ]]; then
   set +a
 fi
 
-MOTO_PORT="${MOTO_PORT:-5000}"
+MOTO_PORT="${MOTO_PORT:-5050}"
 REGISTER_ORDER_PORT="${REGISTER_ORDER_PORT:-9000}"
 MOTO_URL="http://localhost:${MOTO_PORT}"
 REGISTER_ORDER_URL="http://localhost:${REGISTER_ORDER_PORT}/2015-03-31/functions/function/invocations"
