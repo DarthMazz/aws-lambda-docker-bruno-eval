@@ -1,0 +1,4 @@
+# ローカル開発・ユニットテスト用
+-r requirements.txt
+moto[dynamodb,s3]==5.2.3
+pytest==9.1.1
