@@ -1,0 +1,1 @@
+{"orderId": "ORD-SEED-0001", "customerId": "CUST-SEED-001", "items": [{"sku": "SKU-001", "quantity": 1, "price": 1000}], "totalAmount": 1000, "status": "REGISTERED", "s3Key": "orders/ORD-SEED-0001.json", "createdAt": "2026-01-01T00:00:00+00:00"}
