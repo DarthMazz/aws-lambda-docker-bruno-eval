@@ -1,0 +1,33 @@
+meta {
+  name: 06_異常系_入力エラー時は登録されない
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{motoUrl}}/
+  body: json
+  auth: none
+}
+
+headers {
+  X-Amz-Target: DynamoDB_20120810.GetItem
+  Content-Type: application/x-amz-json-1.0
+  Authorization: {{motoAuthDynamodb}}
+}
+
+body:json {
+  {
+    "TableName": "{{ordersTable}}",
+    "Key": { "orderId": { "S": "ORD-BRU-0003" } }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.Item: isUndefined
+}
+
+docs {
+  05 で入力エラーになった注文が DynamoDB に登録されていないことを確認する。
+}

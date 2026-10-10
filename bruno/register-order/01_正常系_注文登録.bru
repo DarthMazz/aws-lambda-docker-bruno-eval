@@ -1,0 +1,31 @@
+meta {
+  name: 01_正常系_注文登録
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{registerOrderUrl}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "orderId": "ORD-BRU-0001",
+    "customerId": "CUST-001",
+    "items": [
+      { "sku": "SKU-001", "quantity": 2, "price": 1200 },
+      { "sku": "SKU-002", "quantity": 1, "price": 500 }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.errorType: isUndefined
+  res.body.orderId: eq "ORD-BRU-0001"
+  res.body.status: eq "REGISTERED"
+  res.body.totalAmount: eq 2900
+  res.body.s3Key: eq "orders/ORD-BRU-0001.json"
+}

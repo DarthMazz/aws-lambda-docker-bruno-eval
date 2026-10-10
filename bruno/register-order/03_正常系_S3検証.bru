@@ -1,0 +1,27 @@
+meta {
+  name: 03_正常系_S3検証
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{motoUrl}}/{{ordersBucket}}/orders/ORD-BRU-0001.json
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{motoAuthS3}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.orderId: eq "ORD-BRU-0001"
+  res.body.customerId: eq "CUST-001"
+  res.body.totalAmount: eq 2900
+  res.body.items: length 2
+}
+
+docs {
+  01 で登録した注文の JSON が S3（moto）に保存されていることを確認する。
+}

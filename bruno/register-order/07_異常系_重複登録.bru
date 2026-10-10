@@ -1,0 +1,30 @@
+meta {
+  name: 07_異常系_重複登録
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{registerOrderUrl}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "orderId": "ORD-SEED-0001",
+    "customerId": "CUST-OVERWRITE",
+    "items": [
+      { "sku": "SKU-999", "quantity": 1, "price": 1 }
+    ]
+  }
+}
+
+assert {
+  res.body.errorType: eq "OrderAlreadyExistsError"
+  res.body.errorMessage: contains "ORD-SEED-0001"
+}
+
+docs {
+  初期データ（moto/init/seed）で登録済みの ORD-SEED-0001 を再登録しようとしてエラーになることを確認する。
+}

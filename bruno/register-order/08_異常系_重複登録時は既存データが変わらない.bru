@@ -1,0 +1,25 @@
+meta {
+  name: 08_異常系_重複登録時は既存データが変わらない
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{motoUrl}}/{{ordersBucket}}/orders/ORD-SEED-0001.json
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: {{motoAuthS3}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.customerId: eq "CUST-SEED-001"
+  res.body.totalAmount: eq 1000
+}
+
+docs {
+  07 の重複登録で、既存注文の S3 オブジェクトが上書きされていないことを確認する。
+}
