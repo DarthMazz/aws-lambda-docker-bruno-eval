@@ -13,7 +13,7 @@ services:
   moto:
     image: motoserver/moto:5.2.3
     ports:
-      - "${MOTO_PORT:-5000}:5000"
+      - "${MOTO_PORT:-5050}:5000"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:5000/moto-api/"]
       interval: 2s
