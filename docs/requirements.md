@@ -2,7 +2,7 @@
 id: REQ-001
 title: コンテナ版 AWS Lambda のローカルテスト環境（Docker Compose + moto + Bruno CLI）
 type: requirements
-version: "1.3"
+version: "1.4"
 status: approved # draft | review | approved | deprecated
 created: 2026-10-10
 updated: 2026-10-10
@@ -20,9 +20,12 @@ related: []
 open_items:
   - CI（GitHub Actions）での自動実行は後日検討
 changelog:
-  - version: "1.3"
+  - version: "1.4"
     date: 2026-10-10
     summary: RIE 起動確認（作業 #3）と Lambda → moto 疎通確認（作業 #6）の結果を反映。moto のホスト側ポートを 5050 に変更
+  - version: "1.3"
+    date: 2026-10-10
+    summary: Bruno コレクション・シェルスクリプトの実装に合わせて更新。RIE のエラー時レスポンスを確認
   - version: "1.2"
     date: 2026-10-10
     summary: moto 初期化スクリプト・compose.yaml の実装に合わせて初期データとディレクトリ構成を更新
@@ -229,11 +232,11 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
 
 | スクリプト | 処理 |
 | --- | --- |
-| `scripts/up.sh` | `docker compose up -d --build`、全サービスの準備完了まで待機 |
+| `scripts/up.sh` | `docker compose up -d --build`、moto-init の完了と Lambda の応答を待機 |
 | `scripts/reset.sh` | moto の状態をリセットし、テストデータを再投入 |
-| `scripts/test.sh` | `bru run` を実行し、`bruno/reports/` に JUnit XML / HTML レポートを出力 |
+| `scripts/test.sh` | reset.sh を実行してから `bru run` を実行し、`bruno/reports/` に JUnit XML / HTML レポートを出力（`SKIP_RESET=1` でリセット省略） |
 | `scripts/down.sh` | `docker compose down -v` で後片付け |
-| `scripts/run-all.sh` | up → reset → test → down を順に実行。テスト結果を終了コードで返し、失敗時も down は必ず実行する |
+| `scripts/run-all.sh` | up → test（reset を含む）→ down を順に実行。テスト結果を終了コードで返し、失敗時も down は必ず実行する |
 
 | ID | 要件 |
 | --- | --- |
@@ -291,13 +294,16 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
     ├── bruno.json
     ├── environments/
     │   └── local.bru
-    ├── _setup/                    # （必要なら）前処理
     ├── register-order/
+    │   ├── folder.bru
     │   ├── 01_正常系_注文登録.bru
     │   ├── 02_正常系_DynamoDB検証.bru
     │   ├── 03_正常系_S3検証.bru
     │   ├── 04_異常系_必須項目欠落.bru
-    │   └── 05_異常系_重複登録.bru
+    │   ├── 05_異常系_数量不正.bru
+    │   ├── 06_異常系_入力エラー時は登録されない.bru
+    │   ├── 07_異常系_重複登録.bru
+    │   └── 08_異常系_重複登録時は既存データが変わらない.bru
     └── reports/                   # 出力先（git 管理外）
 ```
 
@@ -351,8 +357,10 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
 - **RIE のエンドポイント**：コンテナ内 `:8080`、パスは `/2015-03-31/functions/function/invocations` 固定
 - **SDK の接続先切り替え**：boto3 は `AWS_ENDPOINT_URL` 環境変数に対応している
 - **ダミー認証情報**：`AWS_ACCESS_KEY_ID=test` / `AWS_SECRET_ACCESS_KEY=test` / `AWS_DEFAULT_REGION=ap-northeast-1`
-- **RIE の例外時レスポンス**：ハンドラが例外を送出しても RIE は **HTTP 200** を返し、`X-Amz-Function-Error` ヘッダも付かない
-  （実 Lambda の Invoke API とは異なる。作業 #3 で確認済み）。そのため、アサーションはステータスコードではなくボディの `errorType` で行う
+- **RIE の例外時レスポンス**：ハンドラが例外を送出しても HTTP `200`、`Content-Type: text/plain` で、
+  ボディに `errorType` / `errorMessage` / `stackTrace` を含む JSON が返る。`X-Amz-Function-Error` ヘッダは付かない
+  （作業 #3 で確認済み）。このためアサーションはステータスコードではなくボディの `errorType` で行う
+- **RIE の起動確認**：空の Payload `{}` は `ValidationError` になるだけで副作用がないため、`up.sh` の起動待ちに使う
 - **moto の状態検証**：Bruno から moto に直接リクエストして検証する方針
   - moto は Authorization ヘッダの資格情報スコープ（`.../<region>/<service>/aws4_request`）で振り分け先のサービスを判定する。
     署名は検証されないため、**ダミーの Authorization ヘッダ** を付ければ素の HTTP で問い合わせできる（moto 5.2.3 で確認済み）。
