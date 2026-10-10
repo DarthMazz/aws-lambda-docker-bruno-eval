@@ -1,0 +1,26 @@
+meta {
+  name: 05_異常系_数量不正
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{registerOrderUrl}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "orderId": "ORD-BRU-0003",
+    "customerId": "CUST-001",
+    "items": [
+      { "sku": "SKU-001", "quantity": 0, "price": 100 }
+    ]
+  }
+}
+
+assert {
+  res.body.errorType: eq "ValidationError"
+  res.body.errorMessage: contains "quantity"
+}

@@ -1,0 +1,29 @@
+meta {
+  name: 04_異常系_必須項目欠落
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{registerOrderUrl}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "orderId": "ORD-BRU-0002",
+    "items": [
+      { "sku": "SKU-001", "quantity": 1, "price": 100 }
+    ]
+  }
+}
+
+assert {
+  res.body.errorType: eq "ValidationError"
+  res.body.errorMessage: contains "customerId"
+}
+
+docs {
+  customerId 欠落。Step Functions は errorType で Retry / Catch を判定するため、errorType を検証する。
+}

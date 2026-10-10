@@ -1,0 +1,38 @@
+meta {
+  name: 02_正常系_DynamoDB検証
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{motoUrl}}/
+  body: json
+  auth: none
+}
+
+headers {
+  X-Amz-Target: DynamoDB_20120810.GetItem
+  Content-Type: application/x-amz-json-1.0
+  Authorization: {{motoAuthDynamodb}}
+}
+
+body:json {
+  {
+    "TableName": "{{ordersTable}}",
+    "Key": { "orderId": { "S": "ORD-BRU-0001" } }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.Item.orderId.S: eq "ORD-BRU-0001"
+  res.body.Item.customerId.S: eq "CUST-001"
+  res.body.Item.status.S: eq "REGISTERED"
+  res.body.Item.totalAmount.N: eq "2900"
+  res.body.Item.items.L: length 2
+}
+
+docs {
+  01 で登録した注文が DynamoDB（moto）に保存されていることを確認する。
+  moto は Authorization ヘッダの資格情報スコープでサービスを判定するため、ダミーのヘッダを付ける。
+}
