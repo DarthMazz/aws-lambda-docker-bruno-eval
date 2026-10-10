@@ -2,7 +2,7 @@
 id: REQ-001
 title: コンテナ版 AWS Lambda のローカルテスト環境（Docker Compose + moto + Bruno CLI）
 type: requirements
-version: "1.1"
+version: "1.2"
 status: approved # draft | review | approved | deprecated
 created: 2026-10-10
 updated: 2026-10-10
@@ -21,6 +21,9 @@ open_items:
   - CI（GitHub Actions）での自動実行は後日検討
   - Lambda ベースイメージでの RIE 起動確認（作業 #3。開発用クラウド環境では ECR からイメージを取得できないため、ローカル環境で実施）
 changelog:
+  - version: "1.2"
+    date: 2026-10-10
+    summary: moto 初期化スクリプト・compose.yaml の実装に合わせて初期データとディレクトリ構成を更新
   - version: "1.1"
     date: 2026-10-10
     summary: Lambda 実装に合わせてディレクトリ構成を更新。moto の状態検証方法を確定（作業 #7）
@@ -196,7 +199,7 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
 | --- | --- |
 | FR-2-1 | moto server を Docker Compose で起動できること |
 | FR-2-2 | DynamoDB と S3 をモックできること |
-| FR-2-3 | 起動時に init コンテナが テーブル `Orders`・バケット `orders-bucket` を作成し、初期データを投入すること |
+| FR-2-3 | 起動時に init コンテナが テーブル `Orders`・バケット `orders-bucket` を作成し、初期データ（登録済み注文 `ORD-SEED-0001`。重複登録エラーのテストに使用）を投入すること。何度実行しても同じ状態になること |
 | FR-2-4 | テスト前に状態をリセット・再投入できること（moto の `POST /moto-api/reset` ＋ init 再実行） |
 
 ### FR-3 Docker Compose
@@ -280,7 +283,8 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
 │           └── test_handler.py    # moto を使ったユニットテスト
 ├── moto/
 │   └── init/
-│       └── init.sh                # テーブル・バケット作成、初期データ投入
+│       ├── init.sh                # テーブル・バケット作成、初期データ投入
+│       └── seed/orders/           # 初期データ（<orderId>.dynamodb.json と S3 用の <orderId>.json）
 └── bruno/
     ├── bruno.json
     ├── environments/

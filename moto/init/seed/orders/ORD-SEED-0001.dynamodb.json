@@ -1,0 +1,13 @@
+{
+  "orderId": { "S": "ORD-SEED-0001" },
+  "customerId": { "S": "CUST-SEED-001" },
+  "items": {
+    "L": [
+      { "M": { "sku": { "S": "SKU-001" }, "quantity": { "N": "1" }, "price": { "N": "1000" } } }
+    ]
+  },
+  "totalAmount": { "N": "1000" },
+  "status": { "S": "REGISTERED" },
+  "s3Key": { "S": "orders/ORD-SEED-0001.json" },
+  "createdAt": { "S": "2026-01-01T00:00:00+00:00" }
+}

@@ -1,0 +1,45 @@
+name: lambda-bruno-eval
+
+# Lambda / init で共通の AWS 設定。認証情報はダミーで、接続先はすべて moto。
+x-aws-env: &aws-env
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-ap-northeast-1}
+  AWS_ENDPOINT_URL: http://moto:5000
+  ORDERS_TABLE_NAME: ${ORDERS_TABLE_NAME:-Orders}
+  ORDERS_BUCKET_NAME: ${ORDERS_BUCKET_NAME:-orders-bucket}
+
+services:
+  moto:
+    image: motoserver/moto:5.2.3
+    ports:
+      - "${MOTO_PORT:-5000}:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5000/moto-api/"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # moto にテーブル・バケット・初期データを作成して終了する
+  moto-init:
+    image: amazon/aws-cli:2.37.12
+    entrypoint: ["bash", "/init/init.sh"]
+    environment:
+      <<: *aws-env
+    volumes:
+      - ./moto/init:/init:ro
+    depends_on:
+      moto:
+        condition: service_healthy
+
+  # Lambda 関数ごとに 1 サービス。追加時はポートを 9001, 9002 ... と割り当てる
+  register-order:
+    build: ./functions/register-order
+    ports:
+      - "${REGISTER_ORDER_PORT:-9000}:8080"
+    environment:
+      <<: *aws-env
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      moto-init:
+        condition: service_completed_successfully
