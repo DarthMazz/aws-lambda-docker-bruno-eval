@@ -1,0 +1,7 @@
+# local/Dockerfile 専用の除外設定（BuildKit は <Dockerfile>.dockerignore を優先して使う）。
+# ルートの .dockerignore は製品側のものなので使わない。
+# ビルドコンテキストはリポジトリ直下。イメージに必要なもの以外は送らない
+*
+!requirements/requirements.txt
+!src/
+**/__pycache__/

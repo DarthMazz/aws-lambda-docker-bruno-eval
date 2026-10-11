@@ -2,7 +2,7 @@
 id: REQ-001
 title: コンテナ版 AWS Lambda のローカルテスト環境（Docker Compose + moto + Bruno CLI）
 type: requirements
-version: "1.5"
+version: "1.6"
 status: approved # draft | review | approved | deprecated
 created: 2026-10-10
 updated: 2026-10-11
@@ -20,6 +20,9 @@ related: []
 open_items:
   - CI（GitHub Actions）での自動実行は後日検討
 changelog:
+  - version: "1.6"
+    date: 2026-10-11
+    summary: 製品の Dockerfile と衝突しないようテスト用 Dockerfile を local/ に移動。requirements を requirements/ 配下に移動
   - version: "1.5"
     date: 2026-10-11
     summary: 製品の app リポジトリに合わせて src/・tests/ 構成と全関数共通の 1 イメージに再構成。2 つ目の関数（注文取得）を追加
@@ -286,10 +289,9 @@ AWS では CloudFormation の `ImageConfig.Command`、ローカルでは `compos
 │   └── requirements.md            # 本書
 │
 │ # ── アプリケーション（製品の app リポジトリと同じ構成）──
-├── Dockerfile                     # 全関数共通の 1 イメージ。src/ の中身を LAMBDA_TASK_ROOT に置く
-├── .dockerignore                  # requirements.txt と src/ 以外をビルドコンテキストから除外
-├── requirements.txt               # 実行時依存（boto3）
-├── requirements-dev.txt           # テスト用依存（moto, pytest）
+├── requirements/
+│   ├── requirements.txt           # 実行時依存（boto3）
+│   └── requirements-dev.txt       # テスト用依存（moto, pytest）
 ├── pytest.ini                     # pythonpath = src
 ├── src/
 │   ├── handler/
@@ -303,6 +305,9 @@ AWS では CloudFormation の `ImageConfig.Command`、ローカルでは `compos
 │   └── test_get_order_function.py
 │
 │ # ── ローカルテスト環境 ──
+├── local/
+│   ├── Dockerfile                 # ローカルテスト用の全関数共通 1 イメージ（製品の Dockerfile とは別）
+│   └── Dockerfile.dockerignore    # 上の Dockerfile 専用の除外設定（requirements/requirements.txt と src/ 以外を除外）
 ├── compose.yaml                   # moto / moto-init / 関数ごとの Lambda サービス（command でハンドラを指定）
 ├── .env.example
 ├── scripts/
@@ -345,7 +350,7 @@ AWS では CloudFormation の `ImageConfig.Command`、ローカルでは `compos
 | # | 作業 | 成果物 | 依存 |
 | --- | --- | --- | --- |
 | 1 | 要件定義の確定 | 本書 v1.0 | — |
-| 2 | サンプル Lambda の実装・Dockerfile 作成 | `src/`, `tests/`, `Dockerfile` | 1 |
+| 2 | サンプル Lambda の実装・Dockerfile 作成 | `src/`, `tests/`, `local/Dockerfile` | 1 |
 | 3 | Lambda 単体を RIE で起動し、curl で疎通確認 | — | 2 |
 | 4 | moto 初期化スクリプト作成 | `moto/init/init.sh` | 1 |
 | 5 | `compose.yaml` 作成（healthcheck・depends_on・環境変数） | `compose.yaml`, `.env.example` | 2, 4 |
@@ -386,6 +391,9 @@ AWS では CloudFormation の `ImageConfig.Command`、ローカルでは `compos
 
 - **関数の追加**：`src/handler/<service>_function.py` を追加し、compose に `<<: *lambda` を取り込んだサービスを追加して
   `command` にハンドラを、ホスト側ポートに 9002, 9003 … を指定する。Bruno は環境変数で関数ごとの URL を持つ
+- **テスト用 Dockerfile の置き場**：製品リポジトリ直下の `Dockerfile` / `.dockerignore` と衝突しないよう `local/Dockerfile` に置き、
+  ビルドコンテキストはリポジトリ直下にする。除外設定は BuildKit の `<Dockerfile>.dockerignore`（`local/Dockerfile.dockerignore`）を使い、
+  ルートの `.dockerignore` には依存しない
 - **共通イメージのビルド**：compose では関数ごとのサービスが同じ `image` 名と `build` を持つが、
   BuildKit が同一のビルドを 1 回にまとめるため、実際のビルドは 1 回で済む
 

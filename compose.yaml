@@ -12,7 +12,9 @@ x-aws-env: &aws-env
 # Lambda サービスの共通設定。全関数で同じイメージを使う
 x-lambda: &lambda
   image: lambda-bruno-eval-app:local
-  build: .
+  build:
+    context: .
+    dockerfile: local/Dockerfile
   environment:
     <<: *aws-env
     LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -43,7 +45,7 @@ services:
       moto:
         condition: service_healthy
 
-  # Lambda 関数ごとに 1 サービス。イメージは全関数で共通（リポジトリ直下の Dockerfile）で、
+  # Lambda 関数ごとに 1 サービス。イメージは全関数で共通（local/Dockerfile）で、
   # command でハンドラを切り替える（AWS の CloudFormation で ImageConfig.Command を上書きするのと同じ）。
   # 追加時は x-lambda を取り込み、command とポート（9001, 9002 ...）を指定する
   register-order:

@@ -147,9 +147,9 @@ curl -s localhost:9001/2015-03-31/functions/function/invocations -d '{"orderId":
 
 ```
 # ── アプリケーション（製品の app リポジトリと同じ構成）──
-├── Dockerfile                    # 全関数共通の 1 イメージ（src/ の中身を LAMBDA_TASK_ROOT に置く）
-├── requirements.txt              # Lambda 実行時の依存
-├── requirements-dev.txt          # ユニットテスト用の依存
+├── requirements/
+│   ├── requirements.txt          # Lambda 実行時の依存
+│   └── requirements-dev.txt      # ユニットテスト用の依存
 ├── pytest.ini                    # pythonpath = src（Lambda 実行時と同じインポートのルート）
 ├── src/
 │   ├── handler/
@@ -160,6 +160,9 @@ curl -s localhost:9001/2015-03-31/functions/function/invocations -d '{"orderId":
 ├── tests/                        # ユニットテスト（moto のインプロセスモック）
 │
 # ── ローカルテスト環境（製品リポジトリにはこの部分を追加する）──
+├── local/
+│   ├── Dockerfile                # 全関数共通の 1 イメージ（src/ の中身を LAMBDA_TASK_ROOT に置く）
+│   └── Dockerfile.dockerignore   # 上の Dockerfile 専用の除外設定
 ├── compose.yaml                  # moto / moto-init / 関数ごとの Lambda サービス
 ├── .env.example
 ├── scripts/                      # up / reset / test / down / run-all
@@ -172,13 +175,14 @@ curl -s localhost:9001/2015-03-31/functions/function/invocations -d '{"orderId":
 ```
 
 製品リポジトリに適用するときは、下半分（テスト環境）をリポジトリ直下に追加し、
+製品の Dockerfile・`.dockerignore` には手を入れない（テスト用は `local/` に別に持つ）。
 `compose.yaml` の `command` を製品のハンドラ名に、`moto/init/` を製品が使う AWS リソースに書き換える。
 
 ## Lambda のユニットテスト
 
 ```bash
 python3.14 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pip install -r requirements/requirements-dev.txt
 .venv/bin/python -m pytest
 ```
 
@@ -212,7 +216,7 @@ headers { Authorization: {{motoAuthS3}} }
 ## Lambda を追加するとき
 
 1. `src/handler/<service>_function.py` に `lambda_handler` を作り、`tests/` にユニットテストを追加する
-   （イメージは共通なので Dockerfile の変更は不要）
+   （イメージは共通なので `local/Dockerfile` の変更は不要）
 2. `compose.yaml` にサービスを追加する。`<<: *lambda` で共通設定を取り込み、
    `command` にハンドラ（`handler.<service>_function.lambda_handler`）を、ホスト側ポートに 9002, 9003 … を指定する
 3. 必要なら `moto/init/init.sh` にリソースを、`moto/init/seed/` に初期データを追加
