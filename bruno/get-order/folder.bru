@@ -1,0 +1,10 @@
+meta {
+  name: get-order
+  seq: 2
+}
+
+docs {
+  注文取得 Lambda のテスト。register-order と同じイメージを command（ハンドラ）の上書きで起動している。
+  Lambda には Step Functions から渡される想定の Payload をそのまま POST する。
+  初期データ（ORD-SEED-0001）を前提にする（scripts/test.sh が実行前に投入する）。
+}

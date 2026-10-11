@@ -16,8 +16,12 @@ fi
 
 MOTO_PORT="${MOTO_PORT:-5050}"
 REGISTER_ORDER_PORT="${REGISTER_ORDER_PORT:-9000}"
+GET_ORDER_PORT="${GET_ORDER_PORT:-9001}"
 MOTO_URL="http://localhost:${MOTO_PORT}"
-REGISTER_ORDER_URL="http://localhost:${REGISTER_ORDER_PORT}/2015-03-31/functions/function/invocations"
+# RIE の Invoke エンドポイント（パスは固定）。関数ごとにホスト側ポートが異なる
+INVOKE_PATH="/2015-03-31/functions/function/invocations"
+REGISTER_ORDER_URL="http://localhost:${REGISTER_ORDER_PORT}${INVOKE_PATH}"
+GET_ORDER_URL="http://localhost:${GET_ORDER_PORT}${INVOKE_PATH}"
 
 BRUNO_CLI_VERSION="${BRUNO_CLI_VERSION:-4.2.0}"
 WAIT_TIMEOUT_SEC="${WAIT_TIMEOUT_SEC:-120}"
@@ -71,6 +75,7 @@ wait_until() {
 }
 
 # Lambda（RIE）が応答するか。空の Payload は ValidationError になるだけで副作用がない
+# 使い方: lambda_ready <Invoke URL>
 lambda_ready() {
-  curl -fsS -X POST "$REGISTER_ORDER_URL" -d '{}' | grep -q '"errorType"'
+  curl -fsS -X POST "$1" -d '{}' | grep -q '"errorType"'
 }

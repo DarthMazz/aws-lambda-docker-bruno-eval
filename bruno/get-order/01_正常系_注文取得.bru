@@ -1,0 +1,32 @@
+meta {
+  name: 01_正常系_注文取得
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{getOrderUrl}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "orderId": "ORD-SEED-0001"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.orderId: eq "ORD-SEED-0001"
+  res.body.customerId: eq "CUST-SEED-001"
+  res.body.status: eq "REGISTERED"
+  res.body.totalAmount: eq 1000
+  res.body.items: length 1
+  res.body.items[0].quantity: eq 1
+}
+
+docs {
+  初期データ（moto/init/seed）の注文を取得できることを確認する。
+  DynamoDB の数値（Decimal）が JSON の数値として返ることも検証する。
+}

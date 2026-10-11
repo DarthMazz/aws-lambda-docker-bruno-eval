@@ -14,7 +14,7 @@ from typing import Any
 import boto3
 from botocore.exceptions import ClientError
 
-from app.errors import OrderAlreadyExistsError, ValidationError
+from common.errors import OrderAlreadyExistsError, ValidationError
 
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOG_LEVEL", "INFO"))

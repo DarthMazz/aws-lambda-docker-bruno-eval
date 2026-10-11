@@ -28,6 +28,7 @@ set +e
 npx --yes "@usebruno/cli@${BRUNO_CLI_VERSION}" run "${paths[@]}" -r \
   --env local \
   --env-var "registerOrderUrl=${REGISTER_ORDER_URL}" \
+  --env-var "getOrderUrl=${GET_ORDER_URL}" \
   --env-var "motoUrl=${MOTO_URL}" \
   --reporter-junit "$REPORT_DIR/junit.xml" \
   --reporter-html "$REPORT_DIR/report.html"

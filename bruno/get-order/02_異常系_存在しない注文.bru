@@ -1,0 +1,22 @@
+meta {
+  name: 02_異常系_存在しない注文
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{getOrderUrl}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "orderId": "ORD-NOT-FOUND"
+  }
+}
+
+assert {
+  res.body.errorType: eq "OrderNotFoundError"
+  res.body.errorMessage: contains "ORD-NOT-FOUND"
+}

@@ -1,0 +1,20 @@
+meta {
+  name: 03_異常系_必須項目欠落
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{getOrderUrl}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.body.errorType: eq "ValidationError"
+  res.body.errorMessage: contains "orderId"
+}

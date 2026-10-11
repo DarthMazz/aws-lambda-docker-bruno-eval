@@ -2,41 +2,10 @@ import json
 
 import boto3
 import pytest
-from moto import mock_aws
 
-from app import handler
-from app.errors import OrderAlreadyExistsError, ValidationError
-
-TABLE_NAME = "Orders"
-BUCKET_NAME = "orders-bucket"
-REGION = "ap-northeast-1"
-
-
-@pytest.fixture(autouse=True)
-def aws(monkeypatch):
-    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")
-    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
-    monkeypatch.setenv("AWS_DEFAULT_REGION", REGION)
-    monkeypatch.delenv("AWS_ENDPOINT_URL", raising=False)
-    monkeypatch.setenv("ORDERS_TABLE_NAME", TABLE_NAME)
-    monkeypatch.setenv("ORDERS_BUCKET_NAME", BUCKET_NAME)
-
-    # クライアントはキャッシュされるため、モック開始後に作り直させる
-    handler._orders_table.cache_clear()
-    handler._s3_client.cache_clear()
-
-    with mock_aws():
-        boto3.client("dynamodb").create_table(
-            TableName=TABLE_NAME,
-            KeySchema=[{"AttributeName": "orderId", "KeyType": "HASH"}],
-            AttributeDefinitions=[{"AttributeName": "orderId", "AttributeType": "S"}],
-            BillingMode="PAY_PER_REQUEST",
-        )
-        boto3.client("s3").create_bucket(
-            Bucket=BUCKET_NAME,
-            CreateBucketConfiguration={"LocationConstraint": REGION},
-        )
-        yield
+from common.errors import OrderAlreadyExistsError, ValidationError
+from conftest import BUCKET_NAME, TABLE_NAME
+from handler import register_order_function as handler
 
 
 def valid_payload(**overrides):
