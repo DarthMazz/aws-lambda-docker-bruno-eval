@@ -11,3 +11,7 @@ class ValidationError(Exception):
 
 class OrderAlreadyExistsError(Exception):
     """同一 orderId の注文が既に登録されている。"""
+
+
+class OrderNotFoundError(Exception):
+    """指定された orderId の注文が存在しない。"""

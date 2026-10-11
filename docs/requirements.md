@@ -2,10 +2,10 @@
 id: REQ-001
 title: コンテナ版 AWS Lambda のローカルテスト環境（Docker Compose + moto + Bruno CLI）
 type: requirements
-version: "1.4"
+version: "1.6"
 status: approved # draft | review | approved | deprecated
 created: 2026-10-10
-updated: 2026-10-10
+updated: 2026-10-11
 tags:
   - aws-lambda
   - container-image
@@ -20,6 +20,12 @@ related: []
 open_items:
   - CI（GitHub Actions）での自動実行は後日検討
 changelog:
+  - version: "1.6"
+    date: 2026-10-11
+    summary: 製品の Dockerfile と衝突しないようテスト用 Dockerfile を local/ に移動。requirements を requirements/ 配下に移動
+  - version: "1.5"
+    date: 2026-10-11
+    summary: 製品の app リポジトリに合わせて src/・tests/ 構成と全関数共通の 1 イメージに再構成。2 つ目の関数（注文取得）を追加
   - version: "1.4"
     date: 2026-10-10
     summary: RIE 起動確認（作業 #3）と Lambda → moto 疎通確認（作業 #6）の結果を反映。moto のホスト側ポートを 5050 に変更
@@ -79,7 +85,6 @@ AWS Lambda をコンテナイメージ形式で開発し、AWS 環境にデプ�
 
 - 実 AWS 環境へのデプロイ（ECR push、SAM/CDK/Terraform 等）
 - Step Functions 本体のローカル実行（ステートマシン定義の実行）→ 将来拡張（10 章）
-- 複数 Lambda 関数 → 将来拡張（10 章）。ただし追加しやすい構成にしておく
 - API Gateway のエミュレート（Step Functions からの呼び出しが前提のため不要）
 - CI（GitHub Actions）での自動実行 → 後日検討
 - 性能・負荷試験、IAM 権限の厳密な検証
@@ -183,11 +188,23 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
 | `ValidationError` | 必須項目の欠落、`items` が空、数量・価格が不正 |
 | `OrderAlreadyExistsError` | 同一 `orderId` が既に登録済み |
 
+### 4.5 注文取得（2 つ目の関数）
+
+1 つのイメージを複数の関数で使い回す構成を確認するため、DynamoDB から注文を取得する関数を追加する。
+
+- 入力：`{"orderId": "ORD-0001"}`
+- 出力：DynamoDB に登録されている注文（数値は JSON の数値に変換して返す）
+- エラー：`ValidationError`（`orderId` の欠落）、`OrderNotFoundError`（注文が存在しない）
+
 ---
 
 ## 5. 機能要件
 
 ### FR-1 Lambda 関数（コンテナイメージ）
+
+製品の app リポジトリと同じく、全関数を 1 つのコンテナイメージにまとめ、関数ごとにハンドラ（CMD）を上書きする。
+AWS では CloudFormation の `ImageConfig.Command`、ローカルでは `compose.yaml` の `command` で上書きする。
+ハンドラは `src/handler/<service>_function.py` の `lambda_handler` とし、`handler.<service>_function.lambda_handler` で指定する。
 
 | ID | 要件 |
 | --- | --- |
@@ -262,30 +279,44 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
 
 ## 7. ディレクトリ構成
 
+製品の app リポジトリ（直下に `src/` と `tests/`）と同じ構成にし、ローカルテスト環境をその横に置く。
+製品リポジトリに適用するときは、ローカルテスト環境の部分をリポジトリ直下に追加する。
+
 ```
 .
 ├── README.md
 ├── docs/
 │   └── requirements.md            # 本書
-├── compose.yaml
+│
+│ # ── アプリケーション（製品の app リポジトリと同じ構成）──
+├── requirements/
+│   ├── requirements.txt           # 実行時依存（boto3）
+│   └── requirements-dev.txt       # テスト用依存（moto, pytest）
+├── pytest.ini                     # pythonpath = src
+├── src/
+│   ├── handler/
+│   │   ├── register_order_function.py   # handler.register_order_function.lambda_handler
+│   │   └── get_order_function.py        # handler.get_order_function.lambda_handler
+│   └── common/
+│       └── errors.py              # 業務エラー（errorType になる）
+├── tests/
+│   ├── conftest.py                # moto のインプロセスモック（全関数で共有）
+│   ├── test_register_order_function.py
+│   └── test_get_order_function.py
+│
+│ # ── ローカルテスト環境 ──
+├── local/
+│   ├── Dockerfile                 # ローカルテスト用の全関数共通 1 イメージ（製品の Dockerfile とは別）
+│   └── Dockerfile.dockerignore    # 上の Dockerfile 専用の除外設定（requirements/requirements.txt と src/ 以外を除外）
+├── compose.yaml                   # moto / moto-init / 関数ごとの Lambda サービス（command でハンドラを指定）
 ├── .env.example
 ├── scripts/
+│   ├── lib.sh
 │   ├── up.sh
 │   ├── reset.sh
 │   ├── test.sh
 │   ├── down.sh
 │   └── run-all.sh
-├── functions/
-│   └── register-order/            # Lambda ごとにディレクトリを分ける
-│       ├── Dockerfile
-│       ├── requirements.txt       # 実行時依存（boto3）
-│       ├── requirements-dev.txt   # テスト用依存（moto, pytest）
-│       ├── pytest.ini
-│       ├── app/
-│       │   ├── handler.py         # ハンドラ（app.handler.lambda_handler）
-│       │   └── errors.py          # 業務エラー（errorType になる）
-│       └── tests/
-│           └── test_handler.py    # moto を使ったユニットテスト
 ├── moto/
 │   └── init/
 │       ├── init.sh                # テーブル・バケット作成、初期データ投入
@@ -294,7 +325,7 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
     ├── bruno.json
     ├── environments/
     │   └── local.bru
-    ├── register-order/
+    ├── register-order/            # 関数ごとのフォルダ
     │   ├── folder.bru
     │   ├── 01_正常系_注文登録.bru
     │   ├── 02_正常系_DynamoDB検証.bru
@@ -304,6 +335,11 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
     │   ├── 06_異常系_入力エラー時は登録されない.bru
     │   ├── 07_異常系_重複登録.bru
     │   └── 08_異常系_重複登録時は既存データが変わらない.bru
+    ├── get-order/
+    │   ├── folder.bru
+    │   ├── 01_正常系_注文取得.bru
+    │   ├── 02_異常系_存在しない注文.bru
+    │   └── 03_異常系_必須項目欠落.bru
     └── reports/                   # 出力先（git 管理外）
 ```
 
@@ -314,14 +350,14 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
 | # | 作業 | 成果物 | 依存 |
 | --- | --- | --- | --- |
 | 1 | 要件定義の確定 | 本書 v1.0 | — |
-| 2 | サンプル Lambda の実装・Dockerfile 作成 | `functions/register-order/` | 1 |
+| 2 | サンプル Lambda の実装・Dockerfile 作成 | `src/`, `tests/`, `local/Dockerfile` | 1 |
 | 3 | Lambda 単体を RIE で起動し、curl で疎通確認 | — | 2 |
 | 4 | moto 初期化スクリプト作成 | `moto/init/init.sh` | 1 |
 | 5 | `compose.yaml` 作成（healthcheck・depends_on・環境変数） | `compose.yaml`, `.env.example` | 2, 4 |
 | 6 | Lambda → moto（DynamoDB / S3）の疎通確認 | — | 5 |
 | 7 | Bruno から moto の状態を検証する方法を確定（10 章 技術メモ参照） | — | 5 |
 | 8 | Bruno コレクション・環境ファイル作成 | `bruno/` | 6, 7 |
-| 9 | 正常系・異常系テストケースとアサーション実装 | `bruno/register-order/*.bru` | 8 |
+| 9 | 正常系・異常系テストケースとアサーション実装 | `bruno/<関数名>/*.bru` | 8 |
 | 10 | シェルスクリプト作成 | `scripts/*.sh` | 9 |
 | 11 | `run-all.sh` の通し実行・レポート出力確認 | `bruno/reports/` | 10 |
 | 12 | README 整備 | `README.md` | 11 |
@@ -338,7 +374,8 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
 | Q4 | 既存の Lambda コード | なし。サンプル（注文登録）を新規作成 |
 | Q5 | CI | 後日検討（今回は対象外） |
 | Q6 | Bruno CLI の実行場所 | ホストから実行。シェルスクリプトで手順化 |
-| Q7 | Lambda 関数の数 | まずは 1 つ。将来、Step Functions を想定して複数にする |
+| Q7 | Lambda 関数の数 | 2 つ（注文登録・注文取得）。Step Functions を想定して追加しやすい構成にする |
+| Q8 | ディレクトリ構成・イメージ構成 | 製品の app リポジトリに合わせ、`src/handler/<service>_function.py` ＋ 全関数共通の 1 イメージ。ハンドラは CMD の上書きで切り替える（v1.5） |
 
 ---
 
@@ -346,13 +383,19 @@ Step Functions の Lambda タスク（`arn:aws:states:::lambda:invoke`）は、L
 
 ### 10.1 将来拡張
 
-- **複数 Lambda 化**：`functions/<name>/` と compose の service を追加し、ホスト側ポートを 9001, 9002 … と割り当てる。
-  Bruno は環境変数で関数ごとの URL を持つ
 - **Step Functions のローカル実行**：ステートマシン定義ごと検証したくなった場合は、
   AWS Step Functions Local（`amazon/aws-stepfunctions-local`）や moto の Step Functions サポートを候補として別途検討する
 - **CI**：`run-all.sh` をそのまま GitHub Actions から呼べるようにしておく
 
 ### 10.2 技術メモ
+
+- **関数の追加**：`src/handler/<service>_function.py` を追加し、compose に `<<: *lambda` を取り込んだサービスを追加して
+  `command` にハンドラを、ホスト側ポートに 9002, 9003 … を指定する。Bruno は環境変数で関数ごとの URL を持つ
+- **テスト用 Dockerfile の置き場**：製品リポジトリ直下の `Dockerfile` / `.dockerignore` と衝突しないよう `local/Dockerfile` に置き、
+  ビルドコンテキストはリポジトリ直下にする。除外設定は BuildKit の `<Dockerfile>.dockerignore`（`local/Dockerfile.dockerignore`）を使い、
+  ルートの `.dockerignore` には依存しない
+- **共通イメージのビルド**：compose では関数ごとのサービスが同じ `image` 名と `build` を持つが、
+  BuildKit が同一のビルドを 1 回にまとめるため、実際のビルドは 1 回で済む
 
 - **RIE のエンドポイント**：コンテナ内 `:8080`、パスは `/2015-03-31/functions/function/invocations` 固定
 - **SDK の接続先切り替え**：boto3 は `AWS_ENDPOINT_URL` 環境変数に対応している
